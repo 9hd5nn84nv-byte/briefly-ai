@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Briefly — AI Industry Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+  <%- include('partials/nav') %>
+  <%- include('partials/hero') %>
+  <%- include('partials/how') %>
+  <%- include('partials/sample-briefing') %>
+  <%- include('partials/features') %>
+  <%- include('partials/social-proof') %>
+  <%- include('partials/insights') %>
+  <%- include('partials/manifesto') %>
+  <%- include('partials/closing') %>
+  <%- include('partials/footer') %>
+  <!-- Polsia Analytics --><script>(function(){var slug="briefly-ai-4";if(!slug)return;var vid=localStorage.getItem('polsia_vid');if(!vid){vid='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);});localStorage.setItem('polsia_vid',vid);}new Image().src='https://polsia.com/api/beacon/pixel?s='+encodeURIComponent(slug)+'&v='+encodeURIComponent(vid);})();</script>
+<script>
+  (function() {
+    function setupSignupForm(formId, successId) {
+      var form = document.getElementById(formId);
+      var success = document.getElementById(successId);
+      if (!form) return;
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var email = form.querySelector('input[name="email"]').value.trim();
+        var btn = form.querySelector('button');
+        btn.disabled = true;
+        btn.textContent = 'Subscribing…';
+        fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.ok) {
+            form.style.display = 'none';
+            success.style.display = 'flex';
+          } else {
+            btn.disabled = false;
+            btn.textContent = 'Start free trial';
+            alert(data.error || 'Something went wrong. Please try again.');
+          }
+        })
+        .catch(function() {
+          btn.disabled = false;
+          btn.textContent = 'Start free trial';
+          alert('Network error. Please try again.');
+        });
+      });
+    }
+    setupSignupForm('hero-signup', 'hero-success');
+    setupSignupForm('closing-signup', 'closing-success');
+  })();
+</script>
+<script>
+  (function() {
+    var els = document.querySelectorAll('.scroll-reveal');
+    if (!els.length) return;
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function(el) { io.observe(el); });
+  })();
+</script>
+</body>
+</html>

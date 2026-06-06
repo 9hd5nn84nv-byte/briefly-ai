@@ -934,9 +934,29 @@ h1, h2, h3, h4 {
   text-align: center;
 }
 
-.sp-counter {
-  text-align: center;
+.sp-counters {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
   margin-bottom: 48px;
+}
+
+.sp-counter-block {
+  text-align: center;
+  padding: 0 48px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.sp-counter-divider {
+  width: 1px;
+  height: 60px;
+  background: var(--border);
+  flex-shrink: 0;
 }
 
 .sp-num {
@@ -947,12 +967,28 @@ h1, h2, h3, h4 {
   color: var(--dark);
   letter-spacing: -0.04em;
   line-height: 1;
-  margin-bottom: 8px;
 }
 
 .sp-desc {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
+  max-width: 180px;
+  line-height: 1.4;
+}
+
+.sp-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(27,107,58,0.25);
+  animation: pulse 2s infinite;
+  margin-top: 2px;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(27,107,58,0.25); }
+  50% { box-shadow: 0 0 0 6px rgba(27,107,58,0.1); }
 }
 
 .sp-logos {

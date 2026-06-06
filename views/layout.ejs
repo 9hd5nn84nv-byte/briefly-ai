@@ -23,6 +23,49 @@
   <!-- Polsia Analytics --><script>(function(){var slug="briefly-ai-4";if(!slug)return;var vid=localStorage.getItem('polsia_vid');if(!vid){vid='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);});localStorage.setItem('polsia_vid',vid);}new Image().src='https://polsia.com/api/beacon/pixel?s='+encodeURIComponent(slug)+'&v='+encodeURIComponent(vid);})();</script>
 <script>
   (function() {
+    function animateCount(el, target) {
+      var start = 0;
+      var duration = 1200;
+      var startTime = null;
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / duration, 1);
+        var ease = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.floor(ease * target).toLocaleString();
+        if (progress < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function loadStats() {
+      var subEl = document.getElementById('stat-subscribers');
+      var paidEl = document.getElementById('stat-paid');
+      if (!subEl || !paidEl) return;
+      fetch('/api/stats')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          animateCount(subEl, data.totalSubscribers);
+          animateCount(paidEl, data.activePaid);
+        })
+        .catch(function() {
+          subEl.textContent = '—';
+          paidEl.textContent = '—';
+        });
+    }
+
+    var statsSection = document.querySelector('.sp-counters');
+    if (statsSection) {
+      var statsObserver = new IntersectionObserver(function(entries) {
+        if (entries[0].isIntersecting) {
+          loadStats();
+          statsObserver.disconnect();
+        }
+      }, { threshold: 0.3 });
+      statsObserver.observe(statsSection);
+    }
+  })();
+
+  (function() {
     function setupSignupForm(formId, successId) {
       var form = document.getElementById(formId);
       var success = document.getElementById(successId);

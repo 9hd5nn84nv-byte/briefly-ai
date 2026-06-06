@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Up Your Briefing — Briefly</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+</head>
+<body class="onboard-body">
+  <div class="onboard-wrap">
+    <a class="onboard-logo" href="/">Briefly</a>
+
+    <div class="onboard-card">
+      <div class="onboard-step">Step 1 of 1</div>
+      <h1 class="onboard-headline">Personalize your briefing</h1>
+      <p class="onboard-sub">Your agent monitors what you tell it to. The more specific you are, the sharper your briefing.</p>
+
+      <form class="onboard-form" method="POST" action="/onboard">
+        <input type="hidden" name="email" value="<%= email %>">
+
+        <div class="onboard-field">
+          <label class="onboard-label">What industry are you in?</label>
+          <input class="onboard-input" type="text" name="industry" placeholder="e.g. AI SaaS, Fintech, Healthcare" required>
+        </div>
+
+        <div class="onboard-field">
+          <label class="onboard-label">Who are your top competitors? <span class="onboard-hint">(comma separated)</span></label>
+          <input class="onboard-input" type="text" name="competitors" placeholder="e.g. OpenAI, Anthropic, Cohere">
+        </div>
+
+        <div class="onboard-field">
+          <label class="onboard-label">What keywords should we monitor? <span class="onboard-hint">(comma separated)</span></label>
+          <input class="onboard-input" type="text" name="keywords" placeholder="e.g. AI agents, LLM regulation, Series B funding">
+        </div>
+
+        <div class="onboard-field">
+          <label class="onboard-label">Slack webhook URL <span class="onboard-hint">(optional — get your briefing in Slack)</span></label>
+          <input class="onboard-input" type="url" name="slack_webhook_url" placeholder="https://hooks.slack.com/services/...">
+          <span class="onboard-hint-block">
+            <a href="https://api.slack.com/messaging/webhooks" target="_blank" rel="noopener">How to get a Slack webhook →</a>
+          </span>
+        </div>
+
+        <button class="onboard-btn" type="submit">Save & launch my briefing →</button>
+        <a class="onboard-skip" href="/?onboarded=1">Skip for now</a>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

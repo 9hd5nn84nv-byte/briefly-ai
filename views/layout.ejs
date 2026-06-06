@@ -66,6 +66,33 @@
   })();
 
   (function() {
+    // Store referral code from URL param into localStorage
+    var urlParams = new URLSearchParams(window.location.search);
+    var refCode = urlParams.get('ref');
+    if (refCode) {
+      localStorage.setItem('briefly_ref', refCode.toUpperCase());
+      // Clean the URL without reloading
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    function getBaseUrl() {
+      return window.location.protocol + '//' + window.location.host;
+    }
+
+    function showSuccessState(successEl, email, referralCode) {
+      successEl.innerHTML =
+        '<span class="signup-check">✓</span>' +
+        '<span>You\'re on the list — first briefing hits tomorrow morning.' +
+        ' <a href="/onboard?email=' + encodeURIComponent(email) + '" style="color:#F5A623;font-weight:600;">Personalize your briefing →</a>' +
+        (referralCode
+          ? '<br><span style="font-size:0.8rem;opacity:0.7;margin-top:8px;display:block;">Your referral link: <strong>' + getBaseUrl() + '/ref/' + referralCode + '</strong></span>'
+          : '') +
+        '</span>';
+      successEl.style.display = 'flex';
+      successEl.style.flexDirection = 'column';
+      successEl.style.gap = '4px';
+    }
+
     function setupSignupForm(formId, successId) {
       var form = document.getElementById(formId);
       var success = document.getElementById(successId);
@@ -74,18 +101,20 @@
         e.preventDefault();
         var email = form.querySelector('input[name="email"]').value.trim();
         var btn = form.querySelector('button');
+        var ref = localStorage.getItem('briefly_ref') || null;
         btn.disabled = true;
         btn.textContent = 'Subscribing…';
         fetch('/api/subscribe', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email })
+          body: JSON.stringify({ email: email, ref: ref })
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.ok) {
             form.style.display = 'none';
-            success.style.display = 'flex';
+            showSuccessState(success, email, data.referralCode);
+            localStorage.removeItem('briefly_ref');
           } else {
             btn.disabled = false;
             btn.textContent = 'Start free trial';

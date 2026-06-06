@@ -11,18 +11,17 @@ const INBOX_API_KEY = process.env.POLSIA_API_KEY || '';
 const OWNER_EMAIL = process.env.POLSIA_OWNER_EMAIL || 'colecarriger53@gmail.com';
 
 /**
- * Send the briefing HTML email to the owner.
+ * Send the briefing HTML email to a specific address.
  * Falls back to Polsia inbox notification if email is blocked by platform config.
+ * @param {string} to - recipient email
  * @param {string} subject
  * @param {string} html
  */
-async function sendBriefingEmail(subject, html) {
-  // Primary: try email via Polsia proxy
-  const emailResult = await sendViaEmailProxy(OWNER_EMAIL, subject, html);
+async function sendBriefingEmail(to, subject, html) {
+  const recipient = to || OWNER_EMAIL;
+  const emailResult = await sendViaEmailProxy(recipient, subject, html);
   if (emailResult.success) return emailResult;
-
-  // Fallback: send as Polsia inbox message
-  return await sendViaInbox(OWNER_EMAIL, subject, html);
+  return await sendViaInbox(recipient, subject, html);
 }
 
 async function sendViaEmailProxy(to, subject, body) {
@@ -196,4 +195,52 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-module.exports = { sendBriefingEmail, buildBriefingHtml };
+/**
+ * Build a weekly digest HTML email from an array of briefing summaries.
+ * @param {Array} weekStories - flat array of story objects from the week
+ * @param {string} weekLabel - e.g. "Week of June 2 – June 8, 2026"
+ */
+function buildWeeklyDigestHtml(weekStories, weekLabel) {
+  const topStories = weekStories.slice(0, 8);
+  const rows = topStories.map(story => `
+    <tr>
+      <td style="padding:16px 0;border-bottom:1px solid #E8E4DA;">
+        <p style="font-family:'Sora',-apple-system,sans-serif;font-size:16px;font-weight:700;color:#14303A;margin:0 0 6px;">${escapeHtml(story.title)}</p>
+        <p style="font-size:13px;color:#3D6070;margin:0 0 4px;line-height:1.5;">${escapeHtml(story.summary)}</p>
+        <span style="font-size:12px;color:#7A9BA6;font-style:italic;">${escapeHtml(story.angle || '')}</span>
+      </td>
+    </tr>
+  `).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Briefly — Weekly Digest</title></head>
+<body style="margin:0;padding:0;background:#FAFAF5;font-family:'Figtree',-apple-system,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAFAF5;">
+    <tr>
+      <td style="background:#14303A;padding:32px 40px;">
+        <h1 style="font-family:'Sora',-apple-system,sans-serif;font-size:28px;font-weight:800;color:#fff;margin:0;">Briefly</h1>
+        <p style="font-size:14px;color:rgba(255,255,255,0.5);margin:8px 0 0;">Weekly Big Picture — ${weekLabel}</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px 40px;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;background:#fff;border-radius:12px;padding:32px;">
+          <tr><td style="padding-bottom:16px;">
+            <h2 style="font-family:'Sora',-apple-system,sans-serif;font-size:18px;font-weight:700;color:#14303A;margin:0;">The week's most important stories</h2>
+          </td></tr>
+          ${rows}
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:24px 40px 40px;text-align:center;">
+        <p style="font-size:12px;color:#7A9BA6;">Weekly digest from Briefly. <a href="{{{unsubscribeUrl}}}" style="color:#7A9BA6;">Unsubscribe</a>.</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+module.exports = { sendBriefingEmail, buildBriefingHtml, buildWeeklyDigestHtml };

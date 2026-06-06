@@ -8,6 +8,9 @@ const { buildLandingContext } = require('./lib/landing-context');
 const { router: briefingRouter } = require('./routes/briefing');
 const subscribeRouter = require('./routes/subscribe');
 const statsRouter = require('./routes/stats');
+const onboardRouter = require('./routes/onboard');
+const todayRouter = require('./routes/today');
+const referRouter = require('./routes/refer');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -51,6 +54,9 @@ app.get('/', (_req, res) => res.render('layout', buildLandingContext()));
 app.use('/api/briefing', briefingRouter);
 app.use('/api/subscribe', subscribeRouter);
 app.use('/api/stats', statsRouter);
+app.use('/onboard', onboardRouter);
+app.use('/today', todayRouter);
+app.use('/ref', referRouter);
 
 // Only start HTTP server when run as `node server.js` (not when required as module)
 if (require.main === module) {

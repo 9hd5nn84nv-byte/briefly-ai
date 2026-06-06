@@ -71,6 +71,20 @@ h1, h2, h3, h4 {
   letter-spacing: 0.02em;
 }
 
+.nav-cta {
+  padding: 10px 20px;
+  background: var(--dark);
+  color: #fff;
+  font-family: 'Sora', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+.nav-cta:hover { opacity: 0.8; transform: translateY(-1px); }
+
 /* =====================
    HERO
    ===================== */
@@ -721,6 +735,184 @@ h1, h2, h3, h4 {
 }
 
 /* =====================
+   PRICING
+   ===================== */
+.pricing {
+  padding: 100px 48px;
+  background: var(--bg-alt);
+}
+
+.pricing-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.pricing-headline {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 800;
+  color: var(--dark);
+  margin-bottom: 12px;
+}
+
+.pricing-sub {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-bottom: 56px;
+}
+
+.pricing-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.pricing-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  text-align: left;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.pricing-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 48px rgba(20,48,58,0.1);
+}
+
+.pricing-card--featured {
+  background: var(--dark);
+  border-color: var(--dark);
+  transform: scale(1.04);
+}
+
+.pricing-card--featured:hover {
+  transform: scale(1.04) translateY(-3px);
+}
+
+.pricing-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: var(--dark);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 100px;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.pricing-tier {
+  font-family: 'Sora', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.pricing-card--featured .pricing-tier {
+  color: rgba(255,255,255,0.5);
+}
+
+.pricing-price {
+  font-family: 'Sora', sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--dark);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.pricing-price span {
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.pricing-card--featured .pricing-price { color: #fff; }
+.pricing-card--featured .pricing-price span { color: rgba(255,255,255,0.5); }
+
+.pricing-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 28px;
+  min-height: 48px;
+}
+
+.pricing-card--featured .pricing-desc { color: rgba(255,255,255,0.55); }
+
+.pricing-features {
+  list-style: none;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pricing-features li {
+  font-size: 0.875rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pricing-card--featured .pricing-features li { color: rgba(255,255,255,0.8); }
+
+.pf-check {
+  color: var(--green);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.pf-x {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.pricing-card--featured .pf-check { color: #6ee7a0; }
+
+.pricing-btn {
+  display: block;
+  text-align: center;
+  padding: 14px 20px;
+  border-radius: var(--radius-sm);
+  font-family: 'Sora', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.15s;
+  cursor: pointer;
+}
+
+.pricing-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+.pricing-btn--primary {
+  background: var(--accent);
+  color: var(--dark);
+}
+
+.pricing-btn--outline {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--dark);
+}
+
+.pricing-fine {
+  margin-top: 40px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* =====================
    SOCIAL PROOF
    ===================== */
 .social-proof {
@@ -1077,4 +1269,9 @@ h1, h2, h3, h4 {
   .manifesto { padding: 60px 24px; }
   .closing { padding: 60px 24px; }
   .footer { flex-direction: column; gap: 12px; text-align: center; padding: 24px; }
+  .pricing { padding: 60px 24px; }
+  .pricing-cards { grid-template-columns: 1fr; }
+  .pricing-card--featured { transform: scale(1); }
+  .pricing-card--featured:hover { transform: translateY(-3px); }
+  .nav-cta { display: none; }
 }

@@ -10,21 +10,16 @@ const { synthesizeBriefing } = require('../services/synthesize');
 const { sendBriefingEmail, buildBriefingHtml } = require('../services/email');
 const { sendBriefingToSlack } = require('../services/slack');
 
-// Pool is injected per-request via req.app.get('db') or set once on first run
-let _pool = null;
-function getPool(req) {
-  if (req) return req.app.get('db');
-  return _pool;
-}
-function setPool(pool) { _pool = pool; }
-
 // In-memory run tracker (MVP)
 let lastRunAt = null;
 let lastRunStatus = 'idle';
 let lastRunError = null;
 let lastRunStories = null;
 
-async function runBriefingPipeline() {
+// pool is passed in explicitly — works both from HTTP handler and cron job
+async function runBriefingPipeline(pool) {
+  if (!pool) throw new Error('runBriefingPipeline requires a pool argument');
+
   if (lastRunStatus === 'running') {
     return { status: 'already_running', message: 'A briefing is already in progress' };
   }
@@ -55,8 +50,7 @@ async function runBriefingPipeline() {
     const subject = `Briefly — ${alertCount > 0 ? '🔴 ' : ''}${dateStr}`;
     const html = buildBriefingHtml(stories, dateStr);
 
-    // Step 4: Save briefing to DB
-    const pool = getPool();
+    // Step 4: Save briefing to DB (non-fatal)
     try {
       await pool.query(
         `INSERT INTO briefings (date_str, subject, stories, html, story_count, article_count)
@@ -68,7 +62,7 @@ async function runBriefingPipeline() {
       console.error('[briefing] DB save failed (non-fatal):', dbErr.message);
     }
 
-    // Step 5: Send to all subscribers
+    // Step 5: Send to all subscribers (non-fatal)
     let sentCount = 0;
     try {
       const subs = await pool.query(`SELECT email FROM users WHERE email IS NOT NULL`);
@@ -78,16 +72,25 @@ async function runBriefingPipeline() {
         sentCount++;
       }
     } catch (emailErr) {
-      console.error('[briefing] Email send failed:', emailErr.message);
+      console.error('[briefing] Email send failed (non-fatal):', emailErr.message);
     }
 
-    // Step 6: Post to Slack (global webhook)
-    await sendBriefingToSlack(stories, dateStr);
-
-    // Step 7: Post to per-user Slack webhooks
+    // Step 6: Post to Slack — global webhook (non-fatal)
     try {
+      await sendBriefingToSlack(stories, dateStr);
+    } catch (slackErr) {
+      console.error('[briefing] Global Slack post failed (non-fatal):', slackErr.message);
+    }
+
+    // Step 7: Post to per-user Slack webhooks, skipping global webhook URL to avoid duplicates
+    try {
+      const globalWebhook = process.env.SLACK_WEBHOOK_URL || '';
       const slackUsers = await pool.query(
-        `SELECT slack_webhook_url FROM users WHERE slack_webhook_url IS NOT NULL AND slack_webhook_url != ''`
+        `SELECT slack_webhook_url FROM users
+         WHERE slack_webhook_url IS NOT NULL
+           AND slack_webhook_url != ''
+           AND slack_webhook_url != $1`,
+        [globalWebhook]
       );
       for (const u of slackUsers.rows) {
         await sendBriefingToSlack(stories, dateStr, u.slack_webhook_url);
@@ -109,7 +112,7 @@ async function runBriefingPipeline() {
 
 // Manual trigger
 router.get('/run', async (req, res) => {
-  setPool(req.app.get('db'));
+  const pool = req.app.get('db');
   if (lastRunStatus === 'running') {
     if (req.query.force === '1') {
       lastRunStatus = 'idle';
@@ -118,7 +121,7 @@ router.get('/run', async (req, res) => {
     }
   }
   try {
-    const result = await runBriefingPipeline();
+    const result = await runBriefingPipeline(pool);
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -135,7 +138,6 @@ router.get('/debug', async (_req, res) => {
 
 // Debug: test scrapeAll
 router.get('/debug-all', async (_req, res) => {
-  const { scrapeAll } = require('../services/scraper');
   const articles = await scrapeAll();
   res.json({ count: articles.length, first3: articles.slice(0, 3) });
 });

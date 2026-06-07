@@ -1,16 +1,15 @@
 /**
- * Weekly digest cron job — synthesizes the past 7 days of briefings into a
- * "big picture" email and sends to all subscribers.
+ * Weekly digest cron job — sends the past 7 days of briefing stories as a
+ * "big picture" email to all subscribers.
  * Run via: node jobs/weekly-digest.js
  * Schedule: Sundays at 8 AM via polsia.toml [[crons]]
  */
 const app = require('../server');
-const pool = app.get('db');
-const { synthesizeBriefing } = require('../services/synthesize');
 const { sendBriefingEmail, buildWeeklyDigestHtml } = require('../services/email');
 
 (async () => {
   console.log('[weekly-digest] Starting...');
+  const pool = app.get('db');
 
   try {
     // Pull last 7 briefings from DB
@@ -28,9 +27,10 @@ const { sendBriefingEmail, buildWeeklyDigestHtml } = require('../services/email'
       Array.isArray(row.stories) ? row.stories : []
     );
 
-    // Deduplicate by title similarity (simple check)
+    // Deduplicate by title, guard against null titles
     const seen = new Set();
     const uniqueStories = allStories.filter(s => {
+      if (!s || !s.title) return false;
       const key = s.title.slice(0, 40).toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);

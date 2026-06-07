@@ -38,6 +38,7 @@ router.post('/', async (req, res) => {
     );
   } catch (err) {
     console.error('[onboard] DB error:', err.message);
+    return res.status(500).send('Something went wrong saving your preferences. Please go back and try again.');
   }
 
   res.redirect('/?onboarded=1');

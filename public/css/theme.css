@@ -1199,6 +1199,72 @@ h1, h2, h3, h4 {
 }
 
 .manifesto-body p:last-child { margin-bottom: 0; }
+.manifesto-body em { color: var(--dark); font-style: normal; font-weight: 600; }
+
+.manifesto-diff {
+  margin-top: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.manifesto-diff-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.diff-label {
+  font-family: 'Sora', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 100px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.diff-them {
+  background: rgba(122,155,166,0.12);
+  color: var(--text-muted);
+}
+
+.diff-us {
+  background: rgba(245,166,35,0.15);
+  color: var(--accent);
+}
+
+.diff-text {
+  font-size: 0.95rem;
+  color: var(--text-mid);
+  line-height: 1.6;
+}
+
+.pricing-compare {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.pricing-compare-item {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.pricing-compare-sep {
+  color: var(--border);
+}
 
 /* =====================
    CLOSING

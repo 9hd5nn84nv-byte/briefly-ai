@@ -4,9 +4,8 @@
  * Run via: node jobs/weekly-digest.js
  * Schedule: Sundays at 8 AM via polsia.toml [[crons]]
  */
-require('../server');
-
-const pool = require('../db/pool');
+const app = require('../server');
+const pool = app.get('db');
 const { synthesizeBriefing } = require('../services/synthesize');
 const { sendBriefingEmail, buildWeeklyDigestHtml } = require('../services/email');
 

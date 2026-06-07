@@ -5,11 +5,18 @@
  */
 const express = require('express');
 const router = express.Router();
-const pool = require('../db/pool');
 const { scrapeAll } = require('../services/scraper');
 const { synthesizeBriefing } = require('../services/synthesize');
 const { sendBriefingEmail, buildBriefingHtml } = require('../services/email');
 const { sendBriefingToSlack } = require('../services/slack');
+
+// Pool is injected per-request via req.app.get('db') or set once on first run
+let _pool = null;
+function getPool(req) {
+  if (req) return req.app.get('db');
+  return _pool;
+}
+function setPool(pool) { _pool = pool; }
 
 // In-memory run tracker (MVP)
 let lastRunAt = null;
@@ -49,6 +56,7 @@ async function runBriefingPipeline() {
     const html = buildBriefingHtml(stories, dateStr);
 
     // Step 4: Save briefing to DB
+    const pool = getPool();
     try {
       await pool.query(
         `INSERT INTO briefings (date_str, subject, stories, html, story_count, article_count)
@@ -101,6 +109,7 @@ async function runBriefingPipeline() {
 
 // Manual trigger
 router.get('/run', async (req, res) => {
+  setPool(req.app.get('db'));
   if (lastRunStatus === 'running') {
     if (req.query.force === '1') {
       lastRunStatus = 'idle';

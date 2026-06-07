@@ -71,6 +71,21 @@ h1, h2, h3, h4 {
   letter-spacing: 0.02em;
 }
 
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.nav-today {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.nav-today:hover { color: var(--dark); }
+
 .nav-cta {
   padding: 10px 20px;
   background: var(--dark);

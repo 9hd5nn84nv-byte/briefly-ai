@@ -180,8 +180,8 @@ async function scrapeSource(source) {
 async function scrapeAll() {
   const allArticles = [];
 
-  // Process in batches of 5 to avoid hammering
-  const BATCH_SIZE = 5;
+  // Process in batches of 10 — safe with 12 s per-source timeout
+  const BATCH_SIZE = 10;
   for (let i = 0; i < SOURCES.length; i += BATCH_SIZE) {
     const batch = SOURCES.slice(i, i + BATCH_SIZE);
     const results = await Promise.allSettled(batch.map(s => scrapeSource(s)));

@@ -1,22 +1,24 @@
 /**
  * Briefing pipeline — scrapes sources, synthesizes with AI, delivers email.
  * Manual trigger: GET /api/briefing/run
- * Status: GET /api/briefing/status
+ * Status:         GET /api/briefing/status
  */
 const express = require('express');
-const router = express.Router();
-const { scrapeAll } = require('../services/scraper');
-const { synthesizeBriefing } = require('../services/synthesize');
+const router  = express.Router();
+const { scrapeAll }                        = require('../services/scraper');
+const { synthesizeBriefing }               = require('../services/synthesize');
 const { sendBriefingEmail, buildBriefingHtml } = require('../services/email');
-const { sendBriefingToSlack } = require('../services/slack');
+const { sendBriefingToSlack }              = require('../services/slack');
 
 // In-memory run tracker (MVP)
-let lastRunAt = null;
+let lastRunAt     = null;
 let lastRunStatus = 'idle';
-let lastRunError = null;
+let lastRunError  = null;
 let lastRunStories = null;
 
-// pool is passed in explicitly — works both from HTTP handler and cron job
+// ─────────────────────────────────────────────────────────────
+// Core pipeline
+// ─────────────────────────────────────────────────────────────
 async function runBriefingPipeline(pool) {
   if (!pool) throw new Error('runBriefingPipeline requires a pool argument');
 
@@ -24,65 +26,106 @@ async function runBriefingPipeline(pool) {
     return { status: 'already_running', message: 'A briefing is already in progress' };
   }
 
-  lastRunStatus = 'running';
-  lastRunError = null;
+  lastRunStatus  = 'running';
+  lastRunError   = null;
   lastRunStories = null;
-  lastRunAt = new Date().toISOString();
+  lastRunAt      = new Date().toISOString();
 
   try {
     console.log('[briefing] Starting pipeline...');
 
-    // Step 1: Scrape
+    // ── Step 1: Scrape all sources (shared across every subscriber) ──
     const articles = await scrapeAll();
     if (articles.length === 0) throw new Error('No articles scraped — check source URLs');
     console.log(`[briefing] Scraped ${articles.length} articles`);
 
-    // Step 2: Synthesize
-    const stories = await synthesizeBriefing(articles);
-    lastRunStories = stories;
-    console.log(`[briefing] Generated ${stories.length} briefing stories`);
-
-    // Step 3: Build HTML
     const dateStr = new Date().toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
     });
-    const alertCount = stories.filter(s => s.type === 'alert').length;
-    const subject = `Briefly — ${alertCount > 0 ? '🔴 ' : ''}${dateStr}`;
-    const html = buildBriefingHtml(stories, dateStr);
 
-    // Step 4: Save briefing to DB (non-fatal)
+    // ── Step 2: Generic briefing — saved to DB, shown on /today ──
+    const genericStories = await synthesizeBriefing(articles);
+    lastRunStories = genericStories;
+    console.log(`[briefing] Generated generic briefing (${genericStories.length} stories)`);
+
+    const alertCount    = genericStories.filter(s => s.type === 'alert').length;
+    const genericSubject = `Briefly — ${alertCount > 0 ? '🔴 ' : ''}${dateStr}`;
+    const genericHtml   = buildBriefingHtml(genericStories, dateStr);
+
     try {
       await pool.query(
         `INSERT INTO briefings (date_str, subject, stories, html, story_count, article_count)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [dateStr, subject, JSON.stringify(stories), html, stories.length, articles.length]
+        [dateStr, genericSubject, JSON.stringify(genericStories), genericHtml,
+         genericStories.length, articles.length]
       );
-      console.log('[briefing] Saved to DB');
+      console.log('[briefing] Generic briefing saved to DB');
     } catch (dbErr) {
       console.error('[briefing] DB save failed (non-fatal):', dbErr.message);
     }
 
-    // Step 5: Send to all subscribers (non-fatal)
-    let sentCount = 0;
+    // ── Step 3: Fetch all subscribers with their preferences ──
+    let subscribers = [];
     try {
-      const subs = await pool.query(`SELECT email FROM users WHERE email IS NOT NULL`);
-      console.log(`[briefing] Sending to ${subs.rows.length} subscriber(s)...`);
-      for (const sub of subs.rows) {
-        await sendBriefingEmail(sub.email, subject, html);
-        sentCount++;
-      }
-    } catch (emailErr) {
-      console.error('[briefing] Email send failed (non-fatal):', emailErr.message);
+      const result = await pool.query(
+        `SELECT email, industry, competitors, keywords, slack_webhook_url
+         FROM users
+         WHERE email IS NOT NULL`
+      );
+      subscribers = result.rows;
+      console.log(`[briefing] Sending to ${subscribers.length} subscriber(s)...`);
+    } catch (dbErr) {
+      console.error('[briefing] Could not fetch subscribers (non-fatal):', dbErr.message);
     }
 
-    // Step 6: Post to Slack — global webhook (non-fatal)
+    // ── Step 4: Per-subscriber personalized synthesis + delivery ──
+    let sentCount = 0;
+    for (const sub of subscribers) {
+      try {
+        const hasPrefs = sub.industry ||
+                         (sub.competitors && sub.competitors.length > 0) ||
+                         (sub.keywords    && sub.keywords.length > 0);
+
+        let stories, subject, html;
+
+        if (hasPrefs) {
+          // Personalized briefing for this subscriber
+          const prefs = {
+            industry:    sub.industry    || '',
+            competitors: sub.competitors || [],
+            keywords:    sub.keywords    || [],
+          };
+          console.log(`[briefing] Personalizing for ${sub.email} (${prefs.industry || 'no industry'})`);
+          stories = await synthesizeBriefing(articles, prefs);
+          const personalAlerts = stories.filter(s => s.type === 'alert').length;
+          subject = `Briefly — ${personalAlerts > 0 ? '🔴 ' : ''}${dateStr}`;
+          html    = buildBriefingHtml(stories, dateStr);
+        } else {
+          // No prefs set — use the generic briefing (free API call)
+          stories = genericStories;
+          subject = genericSubject;
+          html    = genericHtml;
+        }
+
+        await sendBriefingEmail(sub.email, subject, html);
+        sentCount++;
+      } catch (err) {
+        console.error(`[briefing] Failed to send to ${sub.email}:`, err.message);
+        // Continue to next subscriber
+      }
+    }
+    console.log(`[briefing] Sent ${sentCount}/${subscribers.length} emails`);
+
+    // ── Step 5: Post generic briefing to global Slack webhook ──
     try {
-      await sendBriefingToSlack(stories, dateStr);
+      if (process.env.SLACK_WEBHOOK_URL) {
+        await sendBriefingToSlack(genericStories, dateStr);
+      }
     } catch (slackErr) {
       console.error('[briefing] Global Slack post failed (non-fatal):', slackErr.message);
     }
 
-    // Step 7: Post to per-user Slack webhooks, skipping global webhook URL to avoid duplicates
+    // ── Step 6: Per-user Slack webhooks (skip global to avoid duplicates) ──
     try {
       const globalWebhook = process.env.SLACK_WEBHOOK_URL || '';
       const slackUsers = await pool.query(
@@ -93,22 +136,36 @@ async function runBriefingPipeline(pool) {
         [globalWebhook]
       );
       for (const u of slackUsers.rows) {
-        await sendBriefingToSlack(stories, dateStr, u.slack_webhook_url);
+        try {
+          await sendBriefingToSlack(genericStories, dateStr, u.slack_webhook_url);
+        } catch (e) {
+          console.error('[briefing] Per-user Slack failed (non-fatal):', e.message);
+        }
       }
     } catch (slackErr) {
-      console.error('[briefing] Per-user Slack failed (non-fatal):', slackErr.message);
+      console.error('[briefing] Per-user Slack query failed (non-fatal):', slackErr.message);
     }
 
     lastRunStatus = 'success';
     console.log('[briefing] Pipeline complete!');
-    return { status: 'success', stories: stories.length, articles: articles.length, sent: sentCount };
+    return {
+      status:   'success',
+      stories:  genericStories.length,
+      articles: articles.length,
+      sent:     sentCount,
+      total:    subscribers.length,
+    };
   } catch (err) {
     lastRunStatus = 'error';
-    lastRunError = err.message;
+    lastRunError  = err.message;
     console.error(`[briefing] Pipeline error: ${err.message}`);
     throw err;
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// Routes
+// ─────────────────────────────────────────────────────────────
 
 // Manual trigger
 router.get('/run', async (req, res) => {

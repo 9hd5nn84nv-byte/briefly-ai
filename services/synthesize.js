@@ -7,13 +7,14 @@ const OpenAI = require('openai');
 let client = null;
 function getClient() {
   if (!client) {
-    client = new OpenAI({
+    const options = {
       apiKey: process.env.OPENAI_API_KEY || 'missing',
-      baseURL: process.env.OPENAI_BASE_URL || 'https://llm.services.proxy.sapiom.ai',
-      defaultHeaders: {
-        'x-polsia-company-id': '184140',
-      },
-    });
+    };
+    // Only use a custom base URL if explicitly set — avoids proxy 404 errors
+    if (process.env.OPENAI_BASE_URL) {
+      options.baseURL = process.env.OPENAI_BASE_URL;
+    }
+    client = new OpenAI(options);
   }
   return client;
 }

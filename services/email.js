@@ -6,7 +6,9 @@
 // Email proxy URL and API key are set by the Polsia platform provisioner
 const EMAIL_API_URL = process.env.POLSIA_EMAIL_PROXY_URL || 'https://polsia.com/api/proxy/email/send';
 const EMAIL_API_KEY = process.env.POLSIA_API_KEY || '';
-const INBOX_API_URL = process.env.POLSIA_API_BASE_URL + '/api/inbox/message';
+const INBOX_API_URL = process.env.POLSIA_API_BASE_URL
+  ? `${process.env.POLSIA_API_BASE_URL}/api/inbox/message`
+  : null;
 const INBOX_API_KEY = process.env.POLSIA_API_KEY || '';
 const OWNER_EMAIL = process.env.POLSIA_OWNER_EMAIL || 'colecarriger53@gmail.com';
 
@@ -57,6 +59,10 @@ async function sendViaEmailProxy(to, subject, body) {
 }
 
 async function sendViaInbox(to, subject, body) {
+  if (!INBOX_API_URL) {
+    console.warn('[inbox] POLSIA_API_BASE_URL not set — skipping inbox fallback');
+    return { success: false, reason: 'inbox_not_configured' };
+  }
   // Strip HTML for plain text inbox message
   const text = body.replace(/<[^>]+>/g, ' ').replace(/\n+/g, '\n').trim().slice(0, 2000);
   try {

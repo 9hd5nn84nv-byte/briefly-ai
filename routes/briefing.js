@@ -6,9 +6,17 @@
 const express = require('express');
 const router  = express.Router();
 const { scrapeAll }                        = require('../services/scraper');
-const { synthesizeBriefing }               = require('../services/synthesize');
+const {
+  synthesizeBriefing,
+  buildSubjectLine,
+  buildCompetitorRadar,
+  extractFundingNews,
+} = require('../services/synthesize');
 const { sendBriefingEmail, buildBriefingHtml } = require('../services/email');
 const { sendBriefingToSlack }              = require('../services/slack');
+
+// Small pause so we stay under Resend's free-tier rate limit (~2/sec)
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // In-memory run tracker (MVP)
 let lastRunAt     = null;
@@ -53,9 +61,17 @@ async function runBriefingPipeline(pool) {
     lastRunStories = genericStories;
     console.log(`[briefing] Generated generic briefing (${genericStories.length} stories)`);
 
-    const alertCount    = genericStories.filter(s => s.type === 'alert').length;
-    const genericSubject = `Briefly — ${alertCount > 0 ? '🔴 ' : ''}${dateStr}`;
-    const genericHtml   = buildBriefingHtml(genericStories, dateStr);
+    // Funding intel is market-wide — compute once and reuse for everyone.
+    let funding = [];
+    try {
+      funding = await extractFundingNews(articles);
+      console.log(`[briefing] Funding intel: ${funding.length} item(s)`);
+    } catch (e) {
+      console.error('[briefing] Funding extraction failed (non-fatal):', e.message);
+    }
+
+    const genericSubject = buildSubjectLine(genericStories, dateStr);
+    const genericHtml    = buildBriefingHtml(genericStories, dateStr, { funding });
 
     try {
       await pool.query(
@@ -102,11 +118,21 @@ async function runBriefingPipeline(pool) {
           };
           console.log(`[briefing] Personalizing for ${sub.email} (${prefs.industry || 'no industry'})`);
           stories = await synthesizeBriefing(articles, prefs);
-          const personalAlerts = stories.filter(s => s.type === 'alert').length;
-          subject = `Briefly — ${personalAlerts > 0 ? '🔴 ' : ''}${dateStr}`;
-          html    = buildBriefingHtml(stories, dateStr);
+
+          // Competitor Radar — only when they actually track competitors
+          let radar = [];
+          if (prefs.competitors.length > 0) {
+            try {
+              radar = await buildCompetitorRadar(articles, prefs.competitors);
+            } catch (e) {
+              console.error(`[briefing] Radar failed for ${sub.email} (non-fatal):`, e.message);
+            }
+          }
+
+          subject = buildSubjectLine(stories, dateStr);
+          html    = buildBriefingHtml(stories, dateStr, { radar, funding });
         } else {
-          // No prefs set — use the generic briefing (free API call)
+          // No prefs set — use the generic briefing (no extra API calls)
           stories = genericStories;
           subject = genericSubject;
           html    = genericHtml;
@@ -118,6 +144,8 @@ async function runBriefingPipeline(pool) {
         } else {
           console.error(`[briefing] Not delivered to ${sub.email}: ${result?.reason || 'unknown'}`);
         }
+
+        await sleep(600); // stay under Resend's rate limit
       } catch (err) {
         console.error(`[briefing] Failed to send to ${sub.email}:`, err.message);
         // Continue to next subscriber

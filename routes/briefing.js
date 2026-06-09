@@ -112,14 +112,18 @@ async function runBriefingPipeline(pool) {
           html    = genericHtml;
         }
 
-        await sendBriefingEmail(sub.email, subject, html);
-        sentCount++;
+        const result = await sendBriefingEmail(sub.email, subject, html);
+        if (result && result.success) {
+          sentCount++;
+        } else {
+          console.error(`[briefing] Not delivered to ${sub.email}: ${result?.reason || 'unknown'}`);
+        }
       } catch (err) {
         console.error(`[briefing] Failed to send to ${sub.email}:`, err.message);
         // Continue to next subscriber
       }
     }
-    console.log(`[briefing] Sent ${sentCount}/${subscribers.length} emails`);
+    console.log(`[briefing] Delivered ${sentCount}/${subscribers.length} emails`);
 
     // ── Step 5: Post generic briefing to global Slack webhook ──
     try {

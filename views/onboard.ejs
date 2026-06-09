@@ -18,7 +18,10 @@
       <p class="onboard-sub">Your agent monitors what you tell it to. The more specific you are, the sharper your briefing.</p>
 
       <form class="onboard-form" method="POST" action="/onboard">
-        <input type="hidden" name="email" value="<%= email %>">
+        <div class="onboard-field">
+          <label class="onboard-label">Your email</label>
+          <input class="onboard-input" type="email" name="email" value="<%= email %>" placeholder="you@company.com" required>
+        </div>
 
         <div class="onboard-field">
           <label class="onboard-label">What industry are you in?</label>

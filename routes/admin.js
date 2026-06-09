@@ -4,12 +4,25 @@
  * Protected by a token. Set ADMIN_TOKEN (falls back to BRIEFING_RUN_TOKEN)
  * in the environment, then visit /admin?token=YOUR_TOKEN.
  *
- * Read-only — this page never mutates data.
+ * GET  /admin                  → dashboard
+ * POST /admin/run-briefing     → trigger the daily briefing pipeline
+ * POST /admin/run-alerts       → trigger the real-time alert check
+ * POST /admin/delete-subscriber→ remove a subscriber (purge test/spam rows)
  */
 const express = require('express');
 const router  = express.Router();
+const { runBriefingPipeline } = require('./briefing');
+const { runAlertsPipeline }   = require('./alerts');
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || process.env.BRIEFING_RUN_TOKEN || '';
+
+// Shared auth check for both GET (query) and POST (form body) routes.
+function authed(req) {
+  return ADMIN_TOKEN && (req.query.token === ADMIN_TOKEN || req.body.token === ADMIN_TOKEN);
+}
+function backToAdmin(res, msg) {
+  res.redirect(`/admin?token=${encodeURIComponent(ADMIN_TOKEN)}${msg ? `&msg=${msg}` : ''}`);
+}
 
 router.get('/', async (req, res) => {
   if (!ADMIN_TOKEN) {
@@ -71,12 +84,47 @@ router.get('/', async (req, res) => {
 
   res.render('admin', {
     token:        ADMIN_TOKEN,
+    msg:          req.query.msg || '',
     stats:        first(0, { total: 0, onboarded: 0, with_competitors: 0 }),
     subscribers:  rows(1, []),
     briefings:    rows(2, []),
     alertStats:   first(3, { total: 0, last24h: 0 }),
     recentAlerts: rows(4, []),
   });
+});
+
+// ── Actions (POST, token-gated) ──────────────────────────────
+
+// Kick off the daily briefing pipeline (fire-and-forget; it takes ~90s).
+router.post('/run-briefing', (req, res) => {
+  if (!authed(req)) return res.status(401).send('Unauthorized.');
+  const pool = req.app.get('db');
+  runBriefingPipeline(pool).catch(e => console.error('[admin] briefing run failed:', e.message));
+  backToAdmin(res, 'briefing_started');
+});
+
+// Kick off the real-time alert check (fire-and-forget).
+router.post('/run-alerts', (req, res) => {
+  if (!authed(req)) return res.status(401).send('Unauthorized.');
+  const pool = req.app.get('db');
+  runAlertsPipeline(pool).catch(e => console.error('[admin] alerts run failed:', e.message));
+  backToAdmin(res, 'alerts_started');
+});
+
+// Remove a subscriber (and their alert history). Used to purge test/spam rows.
+router.post('/delete-subscriber', async (req, res) => {
+  if (!authed(req)) return res.status(401).send('Unauthorized.');
+  const email = (req.body.email || '').trim();
+  if (!email) return backToAdmin(res, 'delete_failed');
+  const pool = req.app.get('db');
+  try {
+    await pool.query(`DELETE FROM users WHERE LOWER(email) = LOWER($1)`, [email]);
+    await pool.query(`DELETE FROM sent_alerts WHERE LOWER(user_email) = LOWER($1)`, [email]).catch(() => {});
+    backToAdmin(res, 'deleted');
+  } catch (e) {
+    console.error('[admin] delete failed:', e.message);
+    backToAdmin(res, 'delete_failed');
+  }
 });
 
 module.exports = router;

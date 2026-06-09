@@ -35,6 +35,17 @@
     .empty { padding: 18px; color: #A6B2B8; background: #fff; border: 1px solid #E8E4DA; border-radius: 10px; }
     a.url { color: #1B6B3A; text-decoration: none; }
     code { font-size: 12px; color: #5A6E76; word-break: break-all; }
+    .actions-bar { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .inline-form { display: inline; margin: 0; }
+    .btn { border: none; border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #1B6B3A; color: #fff; }
+    .btn-secondary { background: #14303A; color: #fff; }
+    .btn:hover { opacity: 0.9; }
+    .btn-danger { background: transparent; color: #C0392B; border: 1px solid #E3C9C4; padding: 4px 9px; font-size: 12px; border-radius: 6px; cursor: pointer; }
+    .btn-danger:hover { background: #FBEDEA; }
+    .flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-size: 13px; font-weight: 600; }
+    .flash-ok { background: #F2F7F3; color: #1B6B3A; border: 1px solid #CDE6D5; }
+    .flash-err { background: #FBEDEA; color: #C0392B; border: 1px solid #E3C9C4; }
   </style>
 </head>
 <body>
@@ -44,6 +55,29 @@
   </div>
 
   <div class="wrap">
+    <!-- Flash message -->
+    <% if (msg === 'briefing_started') { %>
+      <div class="flash flash-ok">▶ Briefing started — it runs in the background (~90s). Refresh to see it under Recent briefings.</div>
+    <% } else if (msg === 'alerts_started') { %>
+      <div class="flash flash-ok">🔴 Alert check started — refresh in a minute to see any results.</div>
+    <% } else if (msg === 'deleted') { %>
+      <div class="flash flash-ok">✓ Subscriber deleted.</div>
+    <% } else if (msg === 'delete_failed') { %>
+      <div class="flash flash-err">Couldn't delete that subscriber — check the logs.</div>
+    <% } %>
+
+    <!-- Action bar -->
+    <div class="actions-bar">
+      <form class="inline-form" method="POST" action="/admin/run-briefing">
+        <input type="hidden" name="token" value="<%= token %>">
+        <button class="btn btn-primary" type="submit">▶ Run briefing now</button>
+      </form>
+      <form class="inline-form" method="POST" action="/admin/run-alerts">
+        <input type="hidden" name="token" value="<%= token %>">
+        <button class="btn btn-secondary" type="submit">🔴 Send alerts now</button>
+      </form>
+    </div>
+
     <!-- Summary cards -->
     <div class="cards">
       <div class="card"><div class="n"><%= stats.total %></div><div class="l">Subscribers</div></div>
@@ -61,7 +95,7 @@
     <% } else { %>
       <table>
         <thead>
-          <tr><th>Email</th><th>Industry</th><th>Competitors</th><th>Keywords</th><th>Slack</th><th>Onboarded</th><th>Joined</th></tr>
+          <tr><th>Email</th><th>Industry</th><th>Competitors</th><th>Keywords</th><th>Slack</th><th>Onboarded</th><th>Joined</th><th></th></tr>
         </thead>
         <tbody>
           <% subscribers.forEach(function(u){ %>
@@ -79,6 +113,13 @@
               <td><% if(u.slack_webhook_url){ %><span class="tag-yes">✓</span><% } else { %><span class="tag-no">—</span><% } %></td>
               <td><% if(u.onboarded_at){ %><span class="tag-yes">✓</span><% } else { %><span class="tag-no">—</span><% } %></td>
               <td class="muted"><%= u.created_at ? new Date(u.created_at).toLocaleDateString() : '—' %></td>
+              <td>
+                <form class="inline-form" method="POST" action="/admin/delete-subscriber" onsubmit="return confirm('Delete this subscriber? This cannot be undone.');">
+                  <input type="hidden" name="token" value="<%= token %>">
+                  <input type="hidden" name="email" value="<%= u.email %>">
+                  <button class="btn-danger" type="submit">Delete</button>
+                </form>
+              </td>
             </tr>
           <% }); %>
         </tbody>

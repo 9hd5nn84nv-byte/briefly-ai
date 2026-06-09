@@ -147,6 +147,61 @@ router.get('/run', async (req, res) => {
   }
 });
 
+// Diagnostic — shows what the alert engine sees, without sending anything.
+// e.g. /api/alerts/debug?email=you@example.com
+router.get('/debug', async (req, res) => {
+  if (RUN_TOKEN && req.query.token !== RUN_TOKEN) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  const pool  = req.app.get('db');
+  const email = req.query.email || '';
+  try {
+    const articles = await scrapeAll();
+    const cutoff = Date.now() - ALERT_RECENCY_HOURS * 3600 * 1000;
+    const withDates = articles.filter(a => {
+      if (!a.publishedAt) return false;
+      const t = new Date(a.publishedAt).getTime();
+      return !Number.isNaN(t);
+    });
+    const recent = withDates.filter(a => new Date(a.publishedAt).getTime() >= cutoff);
+
+    let user = 'no email provided';
+    let matchCount = 0;
+    let matches = [];
+    if (email) {
+      const r = await pool.query(
+        `SELECT email, competitors, keywords FROM users WHERE LOWER(email) = LOWER($1)`,
+        [email]
+      );
+      if (r.rows[0]) {
+        const u = r.rows[0];
+        user = { email: u.email, competitors: u.competitors || [], keywords: u.keywords || [] };
+        const found = findAlertWorthyArticles(recent, { competitors: u.competitors || [], keywords: u.keywords || [] });
+        matchCount = found.length;
+        matches = found.slice(0, 10).map(a => ({ title: a.title, publishedAt: a.publishedAt, url: a.url }));
+      } else {
+        user = `not found: ${email}`;
+      }
+    }
+
+    res.json({
+      totalArticles: articles.length,
+      articlesWithParseableDate: withDates.length,
+      recentArticles: recent.length,
+      recencyWindowHours: ALERT_RECENCY_HOURS,
+      newestArticles: withDates
+        .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt))
+        .slice(0, 5)
+        .map(a => ({ title: a.title.slice(0, 70), publishedAt: a.publishedAt })),
+      user,
+      matchCount,
+      matches,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/status', (_req, res) => {
   res.json({ lastRunAt, lastRunStatus, lastRunError });
 });

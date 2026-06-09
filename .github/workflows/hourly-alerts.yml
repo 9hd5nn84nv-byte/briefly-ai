@@ -5,9 +5,11 @@ name: Hourly Alerts
 # in the /api/alerts/run handler, so running often is safe.
 
 on:
-  schedule:
-    # Top of every hour. GitHub may delay this a few minutes — fine here.
-    - cron: '0 * * * *'
+  # Automatic hourly runs are PAUSED during setup/testing so broad test
+  # keywords can't flood the inbox. Re-enable by uncommenting the schedule
+  # below once real (narrow) keywords are set and you're ready to launch.
+  # schedule:
+  #   - cron: '0 * * * *'
   workflow_dispatch: {}
 
 jobs:

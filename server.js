@@ -12,6 +12,7 @@ const statsRouter = require('./routes/stats');
 const onboardRouter = require('./routes/onboard');
 const todayRouter = require('./routes/today');
 const referRouter = require('./routes/refer');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -59,6 +60,7 @@ app.use('/api/stats', statsRouter);
 app.use('/onboard', onboardRouter);
 app.use('/today', todayRouter);
 app.use('/ref', referRouter);
+app.use('/admin', adminRouter);
 
 // Only start HTTP server when run as `node server.js` (not when required as module)
 if (require.main === module) {

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Briefly — Admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: #FAFAF5; color: #14303A;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px; line-height: 1.5;
+    }
+    .top {
+      background: #14303A; color: #fff; padding: 20px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .top h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+    .top a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 13px; }
+    .top a:hover { color: #fff; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 32px 64px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 32px; }
+    .card { background: #fff; border: 1px solid #E8E4DA; border-radius: 10px; padding: 16px 18px; }
+    .card .n { font-size: 28px; font-weight: 800; color: #14303A; }
+    .card .l { font-size: 12px; color: #7A9BA6; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    h2 { font-size: 15px; font-weight: 700; margin: 28px 0 10px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #E8E4DA; border-radius: 10px; overflow: hidden; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid #F0EDE4; vertical-align: top; }
+    th { background: #F2F0E8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #5A6E76; font-weight: 700; }
+    tr:last-child td { border-bottom: none; }
+    td.muted, .muted { color: #A6B2B8; }
+    .pill { display: inline-block; background: #F2F7F3; color: #1B6B3A; border-radius: 4px; padding: 1px 7px; font-size: 12px; margin: 1px 2px 1px 0; }
+    .tag-yes { color: #1B6B3A; font-weight: 600; }
+    .tag-no { color: #A6B2B8; }
+    .empty { padding: 18px; color: #A6B2B8; background: #fff; border: 1px solid #E8E4DA; border-radius: 10px; }
+    a.url { color: #1B6B3A; text-decoration: none; }
+    code { font-size: 12px; color: #5A6E76; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h1>Briefly · Admin</h1>
+    <a href="/admin?token=<%= encodeURIComponent(token) %>">↻ Refresh</a>
+  </div>
+
+  <div class="wrap">
+    <!-- Summary cards -->
+    <div class="cards">
+      <div class="card"><div class="n"><%= stats.total %></div><div class="l">Subscribers</div></div>
+      <div class="card"><div class="n"><%= stats.onboarded %></div><div class="l">Onboarded</div></div>
+      <div class="card"><div class="n"><%= stats.with_competitors %></div><div class="l">Tracking competitors</div></div>
+      <div class="card"><div class="n"><%= briefings.length %></div><div class="l">Briefings (recent)</div></div>
+      <div class="card"><div class="n"><%= alertStats.total %></div><div class="l">Alerts all-time</div></div>
+      <div class="card"><div class="n"><%= alertStats.last24h %></div><div class="l">Alerts last 24h</div></div>
+    </div>
+
+    <!-- Subscribers -->
+    <h2>Subscribers (<%= subscribers.length %>)</h2>
+    <% if (subscribers.length === 0) { %>
+      <div class="empty">No subscribers yet.</div>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr><th>Email</th><th>Industry</th><th>Competitors</th><th>Keywords</th><th>Slack</th><th>Onboarded</th><th>Joined</th></tr>
+        </thead>
+        <tbody>
+          <% subscribers.forEach(function(u){ %>
+            <tr>
+              <td><%= u.email %></td>
+              <td><%= u.industry || '' %><% if(!u.industry){ %><span class="muted">—</span><% } %></td>
+              <td>
+                <% (u.competitors || []).forEach(function(c){ %><span class="pill"><%= c %></span><% }); %>
+                <% if(!(u.competitors && u.competitors.length)){ %><span class="muted">—</span><% } %>
+              </td>
+              <td>
+                <% (u.keywords || []).forEach(function(k){ %><span class="pill"><%= k %></span><% }); %>
+                <% if(!(u.keywords && u.keywords.length)){ %><span class="muted">—</span><% } %>
+              </td>
+              <td><% if(u.slack_webhook_url){ %><span class="tag-yes">✓</span><% } else { %><span class="tag-no">—</span><% } %></td>
+              <td><% if(u.onboarded_at){ %><span class="tag-yes">✓</span><% } else { %><span class="tag-no">—</span><% } %></td>
+              <td class="muted"><%= u.created_at ? new Date(u.created_at).toLocaleDateString() : '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <!-- Briefings -->
+    <h2>Recent briefings</h2>
+    <% if (briefings.length === 0) { %>
+      <div class="empty">No briefings generated yet.</div>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Subject</th><th>Stories</th><th>Articles</th><th>Generated</th></tr>
+        </thead>
+        <tbody>
+          <% briefings.forEach(function(b){ %>
+            <tr>
+              <td><%= b.date_str || '—' %></td>
+              <td><%= b.subject || '—' %></td>
+              <td><%= b.story_count != null ? b.story_count : '—' %></td>
+              <td><%= b.article_count != null ? b.article_count : '—' %></td>
+              <td class="muted"><%= b.created_at ? new Date(b.created_at).toLocaleString() : '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <!-- Alerts -->
+    <h2>Recent alerts</h2>
+    <% if (recentAlerts.length === 0) { %>
+      <div class="empty">No alerts sent yet.</div>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr><th>To</th><th>Article</th><th>Sent</th></tr>
+        </thead>
+        <tbody>
+          <% recentAlerts.forEach(function(a){ %>
+            <tr>
+              <td><%= a.user_email %></td>
+              <td><% if(a.article_url){ %><a class="url" href="<%= a.article_url %>" target="_blank" rel="noopener"><code><%= a.article_url %></code></a><% } else { %>—<% } %></td>
+              <td class="muted"><%= a.created_at ? new Date(a.created_at).toLocaleString() : '—' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</body>
+</html>

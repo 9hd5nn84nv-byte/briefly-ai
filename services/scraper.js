@@ -4,7 +4,7 @@
  */
 const { SOURCES } = require('./sources');
 
-const USER_AGENT = 'Briefly/1.0 (AI industry briefing; contact: briefly@polsia.app)';
+const USER_AGENT = 'Briefly/1.0 (AI industry briefing; contact: colecarriger53@gmail.com)';
 const TIMEOUT_MS = 12000;
 
 /**

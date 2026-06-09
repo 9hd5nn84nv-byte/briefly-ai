@@ -2,7 +2,8 @@
  * Weekly digest cron job — sends the past 7 days of briefing stories as a
  * "big picture" email to all subscribers.
  * Run via: node jobs/weekly-digest.js
- * Schedule: Sundays at 8 AM via polsia.toml [[crons]]
+ * (Not yet wired to a scheduler — trigger manually or add a GitHub Actions
+ * workflow like .github/workflows/daily-briefing.yml when ready.)
  */
 const app = require('../server');
 const { sendBriefingEmail, buildWeeklyDigestHtml } = require('../services/email');

@@ -16,6 +16,11 @@ let lastRunStatus = 'idle';
 let lastRunError  = null;
 let lastRunStories = null;
 
+// Optional shared secret protecting the /run endpoint.
+// If BRIEFING_RUN_TOKEN is set, callers must pass ?token=<value>.
+// If unset, the endpoint stays open (convenient for local/manual testing).
+const RUN_TOKEN = process.env.BRIEFING_RUN_TOKEN || '';
+
 // ─────────────────────────────────────────────────────────────
 // Core pipeline
 // ─────────────────────────────────────────────────────────────
@@ -167,8 +172,13 @@ async function runBriefingPipeline(pool) {
 // Routes
 // ─────────────────────────────────────────────────────────────
 
-// Manual trigger
+// Manual + scheduled trigger
 router.get('/run', async (req, res) => {
+  // Reject unauthorized callers when a token is configured
+  if (RUN_TOKEN && req.query.token !== RUN_TOKEN) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
   const pool = req.app.get('db');
   if (lastRunStatus === 'running') {
     if (req.query.force === '1') {

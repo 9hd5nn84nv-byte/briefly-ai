@@ -1,8 +1,0 @@
-# Briefly — Polsia operating config
-
-[[crons]]
-name = "briefly-daily-briefing"
-schedule = "0 10 * * *"
-command = "node jobs/briefing.js"
-description = "Run the daily briefing pipeline: scrape sources, synthesize with AI, email to subscribers"
-enabled = true

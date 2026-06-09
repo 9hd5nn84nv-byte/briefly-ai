@@ -1,7 +1,8 @@
 /**
- * Daily briefing cron job entry point.
+ * Daily briefing entry point (standalone script form).
  * Run via: node jobs/briefing.js
- * Scheduled via polsia.toml [[crons]]
+ * Production scheduling is handled by .github/workflows/daily-briefing.yml,
+ * which calls GET /api/briefing/run on the deployed service.
  */
 const app = require('../server');
 const { runBriefingPipeline } = require('../routes/briefing');

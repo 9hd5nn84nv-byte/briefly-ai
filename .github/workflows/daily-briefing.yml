@@ -1,0 +1,24 @@
+name: Daily Briefing
+
+# Triggers the daily briefing pipeline on the deployed Render service.
+# This replaces the old polsia.toml cron, which only ran on Polsia's platform.
+
+on:
+  schedule:
+    # 11:00 UTC daily (~6-7am US morning). Times are UTC — adjust to taste.
+    # GitHub may delay scheduled runs by a few minutes; that's fine here.
+    - cron: '0 11 * * *'
+  # Lets you run it on-demand from the repo's Actions tab.
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger briefing run
+        run: |
+          echo "Triggering daily briefing..."
+          curl -fsS --max-time 600 \
+            "https://briefly-ai-wewv.onrender.com/api/briefing/run?force=1&token=${{ secrets.BRIEFING_RUN_TOKEN }}"
+          echo ""
+          echo "Done."

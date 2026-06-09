@@ -1,31 +1,17 @@
 /**
- * Email delivery — sends HTML briefing emails.
- *
- * Delivery order (first one that succeeds wins):
- *   1. Resend  — primary provider, works anywhere (set RESEND_API_KEY)
- *   2. Polsia email proxy — legacy fallback (set POLSIA_API_KEY)
- *   3. Polsia inbox — last-resort notification (set POLSIA_API_BASE_URL)
+ * Email delivery — sends HTML briefing emails via Resend (https://resend.com).
  */
 
-// Resend — primary transactional email provider (https://resend.com)
+// Resend — transactional email provider
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 // "From" address. On Resend's free tier without a verified domain you can only
 // use onboarding@resend.dev and only send to your own verified address.
 // Once you verify a domain, set BRIEFLY_FROM_EMAIL=Briefly <briefing@yourdomain.com>
 const FROM_EMAIL = process.env.BRIEFLY_FROM_EMAIL || 'Briefly <onboarding@resend.dev>';
-
-// Polsia email proxy (legacy / fallback)
-const EMAIL_API_URL = process.env.POLSIA_EMAIL_PROXY_URL || 'https://polsia.com/api/proxy/email/send';
-const EMAIL_API_KEY = process.env.POLSIA_API_KEY || '';
-const INBOX_API_URL = process.env.POLSIA_API_BASE_URL
-  ? `${process.env.POLSIA_API_BASE_URL}/api/inbox/message`
-  : null;
-const INBOX_API_KEY = process.env.POLSIA_API_KEY || '';
-const OWNER_EMAIL = process.env.POLSIA_OWNER_EMAIL || 'colecarriger53@gmail.com';
+const OWNER_EMAIL = process.env.BRIEFLY_OWNER_EMAIL || 'colecarriger53@gmail.com';
 
 /**
- * Send the briefing HTML email to a specific address.
- * Tries Resend first, then the Polsia proxy, then the Polsia inbox.
+ * Send the briefing HTML email to a specific address via Resend.
  * @param {string} to - recipient email
  * @param {string} subject
  * @param {string} html
@@ -33,20 +19,12 @@ const OWNER_EMAIL = process.env.POLSIA_OWNER_EMAIL || 'colecarriger53@gmail.com'
 async function sendBriefingEmail(to, subject, html) {
   const recipient = to || OWNER_EMAIL;
 
-  // 1. Resend (preferred)
-  if (RESEND_API_KEY) {
-    const r = await sendViaResend(recipient, subject, html);
-    if (r.success) return r;
+  if (!RESEND_API_KEY) {
+    console.error('[email] RESEND_API_KEY not set — cannot send. Add it in your environment.');
+    return { success: false, reason: 'resend_not_configured' };
   }
 
-  // 2. Polsia email proxy (only if a key is configured)
-  if (EMAIL_API_KEY) {
-    const r = await sendViaEmailProxy(recipient, subject, html);
-    if (r.success) return r;
-  }
-
-  // 3. Polsia inbox notification (last resort)
-  return await sendViaInbox(recipient, subject, html);
+  return await sendViaResend(recipient, subject, html);
 }
 
 /**
@@ -74,75 +52,6 @@ async function sendViaResend(to, subject, html) {
     return { success: true, via: 'resend', id: data.id };
   } catch (err) {
     console.error(`[resend] Failed: ${err.message}`);
-    return { success: false, reason: err.message };
-  }
-}
-
-async function sendViaEmailProxy(to, subject, body) {
-  try {
-    const res = await fetch(EMAIL_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${EMAIL_API_KEY}`,
-        'x-polsia-company-id': '184140',
-      },
-      body: JSON.stringify({ to, subject, body }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      // Custom domain error means email blocked — fall back to inbox
-      if (res.status === 403 && err.includes('custom_domain')) {
-        console.warn('[email] Custom domain not configured — falling back to inbox');
-        return { success: false, reason: 'custom_domain_required' };
-      }
-      console.error(`[email] Send failed: ${res.status} — ${err}`);
-      throw new Error(`Email send failed: ${res.status}`);
-    }
-
-    const data = await res.json();
-    console.log(`[email] Sent to ${to}, id: ${data.id || data.messageId || 'unknown'}`);
-    return { success: true, id: data.id || data.messageId };
-  } catch (err) {
-    console.error(`[email] Failed: ${err.message}`);
-    return { success: false, reason: err.message };
-  }
-}
-
-async function sendViaInbox(to, subject, body) {
-  if (!INBOX_API_URL) {
-    console.warn('[inbox] POLSIA_API_BASE_URL not set — skipping inbox fallback');
-    return { success: false, reason: 'inbox_not_configured' };
-  }
-  // Strip HTML for plain text inbox message
-  const text = body.replace(/<[^>]+>/g, ' ').replace(/\n+/g, '\n').trim().slice(0, 2000);
-  try {
-    const res = await fetch(INBOX_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${INBOX_API_KEY}`,
-        'x-polsia-company-id': '184140',
-      },
-      body: JSON.stringify({
-        to,
-        subject,
-        message: `[Briefly Daily Briefing]\n\n${text}\n\nView in app: https://briefly-ai-4.polsia.app`,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[inbox] Failed: ${res.status} — ${err}`);
-      throw new Error(`Inbox send failed: ${res.status}`);
-    }
-
-    const data = await res.json();
-    console.log(`[inbox] Sent briefing to owner via inbox, id: ${data.id || 'unknown'}`);
-    return { success: true, via: 'inbox', id: data.id };
-  } catch (err) {
-    console.error(`[inbox] Failed: ${err.message}`);
     return { success: false, reason: err.message };
   }
 }

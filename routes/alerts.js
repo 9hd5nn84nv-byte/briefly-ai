@@ -21,6 +21,9 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const ALERT_RECENCY_HOURS = 3;
 // Cap per user per run so a busy news hour can't flood an inbox.
 const MAX_ALERTS_PER_USER = 3;
+// Hard ceiling per user per rolling 24h — no keyword, however broad, can
+// flood the inbox even across many hourly runs.
+const MAX_ALERTS_PER_USER_PER_DAY = 5;
 
 let lastRunAt = null;
 let lastRunStatus = 'idle';
@@ -79,8 +82,18 @@ async function runAlertsPipeline(pool) {
       const matches = findAlertWorthyArticles(recent, prefs);
       let sentForUser = 0;
 
+      // Respect the rolling 24h ceiling — count what we've already sent today.
+      const dayCount = await pool.query(
+        `SELECT COUNT(*)::int AS n FROM sent_alerts
+         WHERE LOWER(user_email) = LOWER($1) AND created_at > NOW() - INTERVAL '24 hours'`,
+        [sub.email]
+      );
+      const remainingToday = Math.max(0, MAX_ALERTS_PER_USER_PER_DAY - dayCount.rows[0].n);
+      if (remainingToday === 0) continue;
+      const runCap = Math.min(MAX_ALERTS_PER_USER, remainingToday);
+
       for (const article of matches) {
-        if (sentForUser >= MAX_ALERTS_PER_USER) break;
+        if (sentForUser >= runCap) break;
         if (!article.url) continue;
 
         // Claim this (user, article) pair atomically. If it already exists,

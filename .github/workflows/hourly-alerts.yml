@@ -1,0 +1,23 @@
+name: Hourly Alerts
+
+# Checks for breaking news matching each subscriber's tracked competitors and
+# keywords, and sends a real-time alert email. Dedup + recency filtering live
+# in the /api/alerts/run handler, so running often is safe.
+
+on:
+  schedule:
+    # Top of every hour. GitHub may delay this a few minutes — fine here.
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger alert check
+        run: |
+          echo "Checking for real-time alerts..."
+          curl -fsS --max-time 600 \
+            "https://briefly-ai-wewv.onrender.com/api/alerts/run?token=${{ secrets.BRIEFING_RUN_TOKEN }}"
+          echo ""
+          echo "Done."

@@ -6,6 +6,7 @@ const express = require('express');
 const path = require('path');
 const { buildLandingContext } = require('./lib/landing-context');
 const { router: briefingRouter } = require('./routes/briefing');
+const { router: alertsRouter } = require('./routes/alerts');
 const subscribeRouter = require('./routes/subscribe');
 const statsRouter = require('./routes/stats');
 const onboardRouter = require('./routes/onboard');
@@ -52,6 +53,7 @@ app.get('/', (_req, res) => res.render('layout', buildLandingContext()));
 
 // API routes
 app.use('/api/briefing', briefingRouter);
+app.use('/api/alerts', alertsRouter);
 app.use('/api/subscribe', subscribeRouter);
 app.use('/api/stats', statsRouter);
 app.use('/onboard', onboardRouter);
